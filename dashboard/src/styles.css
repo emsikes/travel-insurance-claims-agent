@@ -1,0 +1,339 @@
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --sea-green: #06d6a0;
+  --marigold: #ffc145;
+  --coral: #f78c6b;
+  --cerulean: #118ab2;
+  --raspberry: #ef476f;
+  --midnight: #073b4c;
+  --sea-mist: #cdd8db;
+  --page-bg: #f0f4f5;
+  --white: #ffffff;
+  --black: #000000;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Instrument Sans", sans-serif;
+  background-color: var(--page-bg);
+  color: var(--midnight);
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Instrument Sans", sans-serif;
+  font-weight: 600;
+}
+
+code,
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 2rem;
+  color: var(--midnight);
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-button {
+  background: var(--white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-family: "Instrument Sans", sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.nav-button:hover {
+  background-color: var(--sea-mist);
+}
+
+.nav-button.active {
+  background-color: var(--sea-green);
+  color: var(--midnight);
+  font-weight: 600;
+}
+
+.summary-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  border: 3px solid transparent;
+  transition: transform 0.2s;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+}
+
+.summary-card.status-waiting {
+  border-color: var(--sea-green);
+}
+
+.summary-card.status-in_progress {
+  border-color: var(--marigold);
+}
+
+.summary-card.status-waiting_for_signoff {
+  border-color: var(--coral);
+}
+
+.summary-card.status-decided {
+  border-color: var(--cerulean);
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--midnight);
+}
+
+.panel {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.claims-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.claim-card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.claim-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.claim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.claim-id {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--midnight);
+}
+
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-waiting {
+  background-color: var(--sea-green);
+  color: var(--midnight);
+}
+
+.status-in_progress {
+  background-color: var(--marigold);
+  color: var(--midnight);
+}
+
+.status-waiting_for_signoff {
+  background-color: var(--coral);
+  color: var(--midnight);
+}
+
+.status-decided {
+  background-color: var(--cerulean);
+  color: var(--white);
+}
+
+.claim-details {
+  font-size: 0.9rem;
+  color: var(--midnight);
+}
+
+.claim-amount {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.detail-section {
+  margin-bottom: 2rem;
+}
+
+.detail-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--midnight);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.detail-item {
+  padding: 1rem;
+  background-color: var(--page-bg);
+  border-radius: 8px;
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.detail-value {
+  font-weight: 500;
+}
+
+.detail-value.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.decision-panel {
+  background-color: var(--cerulean);
+  color: var(--white);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+}
+
+.decision-panel h3 {
+  margin-bottom: 0.5rem;
+}
+
+.items-list {
+  list-style: none;
+  margin-top: 1rem;
+}
+
+.items-list li {
+  padding: 0.75rem;
+  background-color: var(--page-bg);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.documents-list {
+  list-style: none;
+  margin-top: 1rem;
+}
+
+.document-item {
+  padding: 1rem;
+  background-color: var(--page-bg);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.document-name {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.document-content {
+  font-size: 0.9rem;
+  color: #666;
+  white-space: pre-wrap;
+}
+
+.back-button {
+  background: var(--midnight);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-family: "Instrument Sans", sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+
+.back-button:hover {
+  background-color: #0a5463;
+}
+
+.instructions-panel {
+  background-color: var(--page-bg);
+  padding: 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  max-width: 800px;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.error {
+  background-color: var(--raspberry);
+  color: var(--white);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
