@@ -16,24 +16,43 @@ test.describe("Dashboard", () => {
     await expect(page.locator(".summary-dashboard")).toBeVisible();
 
     // Verify all summary cards are present
-    await expect(page.getByText("Total Claims", { exact: true })).toBeVisible();
-    await expect(page.getByText("Waiting", { exact: true })).toBeVisible();
-    await expect(page.getByText("In Progress", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Waiting for Sign-off", { exact: true }),
+      page
+        .locator(".summary-dashboard")
+        .getByText("Total Claims", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Decided", { exact: true })).toBeVisible();
+    await expect(
+      page.locator(".summary-dashboard").getByText("Waiting", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".summary-dashboard")
+        .getByText("In Progress", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".summary-dashboard")
+        .getByText("Waiting for Sign-off", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".summary-dashboard").getByText("Decided", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".summary-card").getByText("Left for a Handler"),
+    ).toBeVisible();
 
     // Verify summary cards have values
     const summaryCards = page.locator(".summary-card");
-    await expect(summaryCards).toHaveCount(5);
+    await expect(summaryCards).toHaveCount(6);
   });
 
   test("displays claim cards in the queue", async ({ page }) => {
     await page.goto("/");
 
     // Wait for the panel to load
-    await expect(page.locator(".panel")).toBeVisible();
+    await expect(
+      page.locator(".panel", { hasText: /Claims Queue/ }),
+    ).toBeVisible();
     await expect(page.locator(".claims-grid")).toBeVisible();
 
     // Wait for claims to load
@@ -102,9 +121,11 @@ test.describe("Dashboard", () => {
     await page.getByRole("button", { name: "Agent Instructions" }).click();
 
     // Verify instructions content
-    await expect(page.getByText(/You are the UnderCover Agent/)).toBeVisible();
     await expect(
-      page.getByText(/deciding travel insurance claims/),
+      page.getByText(/running UnderCover Travel Insurance's queue/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/deciding one travel insurance claim/),
     ).toBeVisible();
   });
 
@@ -116,7 +137,9 @@ test.describe("Dashboard", () => {
 
     // Go to instructions
     await page.getByRole("button", { name: "Agent Instructions" }).click();
-    await expect(page.getByText(/You are the UnderCover Agent/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Working a Claim" }),
+    ).toBeVisible();
 
     // Go back to queue
     await page.getByRole("button", { name: "Claims Queue" }).click();
@@ -128,7 +151,9 @@ test.describe("Dashboard", () => {
 
     // Go to instructions from claim detail
     await page.getByRole("button", { name: "Agent Instructions" }).click();
-    await expect(page.getByText(/You are the UnderCover Agent/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Working a Claim" }),
+    ).toBeVisible();
   });
 
   test("displays status badges with correct styling", async ({ page }) => {
@@ -144,7 +169,7 @@ test.describe("Dashboard", () => {
     // Check that badge has one of the expected status classes
     const badgeClass = await badge.getAttribute("class");
     expect(badgeClass).toMatch(
-      /status-(waiting|in_progress|waiting_for_signoff|decided)/,
+      /status-(waiting|in_progress|waiting_for_signoff|decided|needs_handler)/,
     );
   });
 

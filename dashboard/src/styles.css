@@ -11,6 +11,22 @@
   --page-bg: #f0f4f5;
   --white: #ffffff;
   --black: #000000;
+  --surface: var(--white);
+  --ink: var(--midnight);
+  --muted: #4f6a73;
+  --sea-green-text: #037a5b;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: #04232e;
+    --surface: var(--black);
+    --ink: var(--sea-mist);
+    --muted: #93a9af;
+    --sea-green-text: #6eecc8;
+    color-scheme: dark;
+  }
 }
 
 * {
@@ -22,7 +38,7 @@
 body {
   font-family: "Instrument Sans", sans-serif;
   background-color: var(--page-bg);
-  color: var(--midnight);
+  color: var(--ink);
   line-height: 1.6;
 }
 
@@ -56,7 +72,7 @@ code,
 
 .header h1 {
   font-size: 2rem;
-  color: var(--midnight);
+  color: var(--ink);
 }
 
 .nav {
@@ -65,7 +81,8 @@ code,
 }
 
 .nav-button {
-  background: var(--white);
+  background: var(--surface);
+  color: var(--ink);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
@@ -77,6 +94,7 @@ code,
 
 .nav-button:hover {
   background-color: var(--sea-mist);
+  color: var(--midnight);
 }
 
 .nav-button.active {
@@ -93,7 +111,7 @@ code,
 }
 
 .summary-card {
-  background: var(--white);
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
   text-align: center;
@@ -123,7 +141,7 @@ code,
 
 .summary-label {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--muted);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
@@ -132,11 +150,11 @@ code,
   font-family: "JetBrains Mono", monospace;
   font-size: 2.5rem;
   font-weight: 600;
-  color: var(--midnight);
+  color: var(--ink);
 }
 
 .panel {
-  background: var(--white);
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -148,7 +166,7 @@ code,
 }
 
 .claim-card {
-  background: var(--white);
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
   cursor: pointer;
@@ -170,7 +188,7 @@ code,
   font-family: "JetBrains Mono", monospace;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--midnight);
+  color: var(--ink);
 }
 
 .status-badge {
@@ -202,7 +220,7 @@ code,
 
 .claim-details {
   font-size: 0.9rem;
-  color: var(--midnight);
+  color: var(--ink);
 }
 
 .claim-amount {
@@ -218,7 +236,7 @@ code,
 .detail-section h2 {
   font-size: 1.5rem;
   margin-bottom: 1rem;
-  color: var(--midnight);
+  color: var(--ink);
 }
 
 .detail-grid {
@@ -236,7 +254,7 @@ code,
 
 .detail-label {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--muted);
   margin-bottom: 0.25rem;
 }
 
@@ -293,7 +311,7 @@ code,
 
 .document-content {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--muted);
   white-space: pre-wrap;
 }
 
@@ -327,7 +345,7 @@ code,
   text-align: center;
   padding: 3rem;
   font-size: 1.1rem;
-  color: #666;
+  color: var(--muted);
 }
 
 .error {
@@ -336,4 +354,136 @@ code,
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
+}
+
+.status-needs_handler {
+  background-color: var(--raspberry);
+  color: var(--white);
+}
+
+.summary-card.status-needs_handler {
+  border-color: var(--raspberry);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.run-panel h2 {
+  font-size: 1.5rem;
+}
+
+.run-progress {
+  font-weight: 600;
+  color: var(--sea-green-text);
+}
+
+.run-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.todo-list,
+.steps-list,
+.sections-list {
+  list-style: none;
+}
+
+.todo-item,
+.step,
+.sections-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.6rem 0.75rem;
+  background-color: var(--page-bg);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.todo-item .status-badge {
+  flex: 0 0 10rem;
+  text-align: center;
+}
+
+.run-summary {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--page-bg);
+  border-radius: 8px;
+}
+
+.run-summary p {
+  white-space: pre-wrap;
+}
+
+.attempts {
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+.step {
+  font-size: 0.9rem;
+}
+
+.step-time {
+  flex: 0 0 5rem;
+  color: var(--muted);
+}
+
+.step-kind {
+  flex: 0 0 9rem;
+  font-weight: 600;
+}
+
+.step-text {
+  overflow-wrap: anywhere;
+}
+
+.step-section_read .step-kind,
+.step-result .step-kind {
+  color: var(--sea-green-text);
+}
+
+.step-error .step-kind {
+  color: var(--raspberry);
+}
+
+.instructions-panel {
+  margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 1rem;
+  }
+
+  .header,
+  .claim-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .todo-item,
+  .step {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .todo-item .status-badge,
+  .step-time,
+  .step-kind {
+    flex: none;
+  }
+}
+
+.summary-card[class*="status-"] .summary-label,
+.summary-card[class*="status-"] .summary-value {
+  color: inherit;
 }
