@@ -50,6 +50,7 @@ def test_read_section():
     assert section["content"].startswith("## 9. Repeat claims")
     assert "## 10." not in section["content"]
     assert "Meals without receipts" not in section["content"]
+    assert section["document_title"] == "Claims manual"
 
 
 def test_unknown_document_or_section():

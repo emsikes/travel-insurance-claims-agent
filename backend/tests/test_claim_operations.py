@@ -51,6 +51,7 @@ def claim(claim_id: str) -> dict:
 def test_start_claim():
     response = client.post("/api/claims/CLM-1001/start")
     assert response.status_code == 200
+    assert response.json()["attempts"] == 0
     assert claim("CLM-1001")["status"] == "in_progress"
 
 
@@ -96,7 +97,7 @@ def test_decide_claim_refer():
 
 def test_decide_claim_invalid_decision():
     response = start_and_decide("CLM-1011", "maybe", 0.0)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_decide_claim_twice_is_refused():
@@ -198,3 +199,27 @@ def test_seed_resets_attempts_and_payments():
     reset = claim("CLM-1001")
     assert reset["attempts"] == 0
     assert reset["paid_amount"] is None
+
+
+def test_waiting_claims_are_brief():
+    client.post("/api/claims/CLM-1020/start")
+    waiting = client.get("/api/claims/waiting").json()
+    ids = [c["claim_id"] for c in waiting]
+    assert "CLM-1020" not in ids
+    assert "CLM-1021" in ids
+    assert set(waiting[0]) == {
+        "claim_id",
+        "summary",
+        "claim_type",
+        "amount_claimed",
+        "attempts",
+    }
+
+
+def test_connections_are_closed_when_a_route_raises():
+    assert client.get("/api/claims/CLM-9999").status_code == 404
+    unpaid = client.post("/api/claims/CLM-1021/pay", json={"amount": 1})
+    assert unpaid.status_code == 400
+    DB_PATH.unlink()
+    init_db()
+    assert claim("CLM-1021")["status"] == "waiting"

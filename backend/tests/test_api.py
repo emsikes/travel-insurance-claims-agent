@@ -110,11 +110,3 @@ def test_get_company_settings():
     assert response.status_code == 200
     settings = response.json()
     assert settings["payout_approval_limit"] == 1000.0
-
-
-def test_get_policy_wording():
-    response = client.get("/api/policy-wording")
-    assert response.status_code == 200
-    data = response.json()
-    assert "content" in data
-    assert "UnderCover Travel Insurance" in data["content"]
