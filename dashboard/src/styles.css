@@ -18,8 +18,10 @@
   color-scheme: light;
 }
 
+/* Dark mode follows the system until the handler picks a theme in the header,
+   which sets data-theme on the root element. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --page-bg: #04232e;
     --surface: var(--black);
     --ink: var(--sea-mist);
@@ -27,6 +29,15 @@
     --sea-green-text: #6eecc8;
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --page-bg: #04232e;
+  --surface: var(--black);
+  --ink: var(--sea-mist);
+  --muted: #93a9af;
+  --sea-green-text: #6eecc8;
+  color-scheme: dark;
 }
 
 * {
@@ -468,6 +479,15 @@ code,
 
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .nav {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-button {
+    padding: 0.6rem 1rem;
   }
 
   .todo-item,

@@ -12,6 +12,7 @@ import {
 import { ClaimSteps } from "./ClaimSteps";
 import { InstructionsView } from "./InstructionsView";
 import { RunPanel } from "./RunPanel";
+import { ThemeToggle } from "./ThemeToggle";
 import "./styles.css";
 
 type View = "queue" | "claim" | "instructions";
@@ -197,6 +198,7 @@ export function App() {
           >
             Agent Instructions
           </button>
+          <ThemeToggle />
         </nav>
       </div>
 
