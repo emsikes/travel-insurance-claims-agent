@@ -1,42 +1,29 @@
-import sys
-
 import pytest
 
 from agent import __main__ as cli
 
 
-def test_cli_continues_after_a_failed_claim(monkeypatch, capsys):
-    claims = [{"claim_id": "CLM-1"}, {"claim_id": "CLM-2"}]
-    processed = []
-
-    def fake_run(claim_id, thread_id):
-        if claim_id == "CLM-1":
-            raise RuntimeError("boom")
-        processed.append(claim_id)
-        return "done"
-
-    monkeypatch.setattr(cli, "get_waiting_claims", lambda: claims)
-    monkeypatch.setattr(cli, "work", fake_run)
-    monkeypatch.setattr(sys, "argv", ["agent"])
-    cli.main()
-    out = capsys.readouterr()
-    assert processed == ["CLM-2"]
-    assert "Completed 1 of 2 claim(s)" in out.out
-    assert "CLM-1 failed: boom" in out.err
+def test_cli_works_the_queue(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "run_queue", lambda cap: f"summary, cap {cap}")
+    cli.main([])
+    assert "summary, cap None" in capsys.readouterr().out
 
 
-def test_cli_single_claim(monkeypatch, capsys):
-    monkeypatch.setattr(
-        cli, "work", lambda claim_id, thread_id: f"{claim_id} {thread_id}"
-    )
-    monkeypatch.setattr(sys, "argv", ["agent", "CLM-9", "t1"])
-    cli.main()
-    assert "CLM-9 t1" in capsys.readouterr().out
+def test_cli_caps_the_run(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "run_queue", lambda cap: f"summary, cap {cap}")
+    cli.main(["--cap", "5"])
+    assert "summary, cap 5" in capsys.readouterr().out
 
 
-def test_cli_no_waiting_claims(monkeypatch):
-    monkeypatch.setattr(cli, "get_waiting_claims", lambda: [])
-    monkeypatch.setattr(sys, "argv", ["agent"])
-    with pytest.raises(SystemExit) as exit_info:
-        cli.main()
-    assert exit_info.value.code == 0
+def test_cli_works_one_claim(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "work", lambda claim_id, prefix: f"{claim_id} {prefix}")
+    cli.main(["CLM-1009"])
+    assert "CLM-1009 cli" in capsys.readouterr().out
+
+
+def test_cli_help(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])
+    out = capsys.readouterr().out
+    assert "--cap" in out
+    assert "CLM-1001" in out
