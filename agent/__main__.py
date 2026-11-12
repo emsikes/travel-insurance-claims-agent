@@ -4,7 +4,8 @@ import sys
 
 import httpx
 
-from agent.main import BACKEND_URL, run
+from agent.claim import work
+from agent.main import BACKEND_URL
 
 THREAD_ID_ARG_INDEX = 2
 
@@ -65,7 +66,7 @@ def main() -> None:
                 thread_id = f"cli-{claim_id}"
                 print(f"[{i}/{len(waiting_claims)}] Processing {claim_id}...")
                 try:
-                    run(claim_id, thread_id)
+                    work(claim_id, thread_id)
                     print(f"{claim_id} processed\n")
                 except Exception as e:
                     failed.append(claim_id)
@@ -85,7 +86,7 @@ def main() -> None:
             )
 
             print(f"Processing claim {claim_id} with thread {thread_id}...")
-            result = run(claim_id, thread_id)
+            result = work(claim_id, thread_id)
             print(f"\nAgent response:\n{result}")
 
     except KeyboardInterrupt:

@@ -16,7 +16,7 @@ def test_cli_continues_after_a_failed_claim(monkeypatch, capsys):
         return "done"
 
     monkeypatch.setattr(cli, "get_waiting_claims", lambda: claims)
-    monkeypatch.setattr(cli, "run", fake_run)
+    monkeypatch.setattr(cli, "work", fake_run)
     monkeypatch.setattr(sys, "argv", ["agent"])
     cli.main()
     out = capsys.readouterr()
@@ -27,7 +27,7 @@ def test_cli_continues_after_a_failed_claim(monkeypatch, capsys):
 
 def test_cli_single_claim(monkeypatch, capsys):
     monkeypatch.setattr(
-        cli, "run", lambda claim_id, thread_id: f"{claim_id} {thread_id}"
+        cli, "work", lambda claim_id, thread_id: f"{claim_id} {thread_id}"
     )
     monkeypatch.setattr(sys, "argv", ["agent", "CLM-9", "t1"])
     cli.main()
