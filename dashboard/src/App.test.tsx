@@ -182,6 +182,15 @@ it("shows the to-do list in all four states", async () => {
   expect(within(panel).getByText("CLM-1003: phone")).toBeDefined();
 });
 
+it("says claim, not claims, for a run capped at one", async () => {
+  mockApi({ run: { ...run, cap: 1 } });
+  render(<App />);
+  const panel = await screen.findByLabelText("Current run");
+  expect(panel.querySelector(".run-meta")?.textContent).toMatch(
+    /capped at 1 claim$/,
+  );
+});
+
 it("shows a planning message before the agent writes its list", async () => {
   mockApi({ run: { ...run, todos: [] } });
   render(<App />);

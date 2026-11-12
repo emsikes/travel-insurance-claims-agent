@@ -19,7 +19,8 @@ export function RunPanel({ run }: Readonly<{ run: Run }>) {
       </div>
       <p className="run-meta">
         <span className="mono">{run.run_id}</span> · capped at{" "}
-        <span className="mono">{run.cap}</span> claims
+        <span className="mono">{run.cap}</span>{" "}
+        {run.cap === 1 ? "claim" : "claims"}
       </p>
       {run.todos.length === 0 ? (
         <p className="muted">The agent is planning its work.</p>
