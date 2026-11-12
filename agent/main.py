@@ -78,9 +78,9 @@ def get_policy_wording() -> str:
 
 
 @tool
-def update_claim_status(claim_id: str, status: str) -> dict | str:
-    """Update a claim's status."""
-    return call("POST", f"/api/claims/{claim_id}/status", {"status": status})
+def start_claim(claim_id: str) -> dict | str:
+    """Start work on a claim, setting its status to in_progress."""
+    return call("POST", f"/api/claims/{claim_id}/start")
 
 
 @tool
@@ -124,7 +124,7 @@ def run(claim_id: str, thread_id: str, llm: BaseChatModel | None = None) -> str:
         get_policy,
         get_customer,
         get_policy_wording,
-        update_claim_status,
+        start_claim,
         record_decision,
         pay_claim,
     ]

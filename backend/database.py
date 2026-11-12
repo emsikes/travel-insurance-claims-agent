@@ -39,7 +39,9 @@ def init_db() -> None:
             decision TEXT,
             payout REAL,
             explanation TEXT,
-            policy_reference TEXT
+            policy_reference TEXT,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            paid_amount REAL
         )
     """)
 

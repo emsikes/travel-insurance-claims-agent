@@ -62,16 +62,15 @@ def test_get_policy_wording(monkeypatch):
     assert "UnderCover Travel Insurance" in wording
 
 
-def test_update_claim_status(monkeypatch):
+def test_start_claim(monkeypatch):
     monkeypatch.setattr(main, "backend", lambda: TestClient(app))
-    result = main.update_claim_status.invoke(
-        {"claim_id": "CLM-1001", "status": "in_progress"}
-    )
+    result = main.start_claim.invoke({"claim_id": "CLM-1001"})
     assert result["status"] == "in_progress"
 
 
 def test_record_decision(monkeypatch):
     monkeypatch.setattr(main, "backend", lambda: TestClient(app))
+    main.start_claim.invoke({"claim_id": "CLM-1002"})
     result = main.record_decision.invoke(
         {
             "claim_id": "CLM-1002",
@@ -87,6 +86,7 @@ def test_record_decision(monkeypatch):
 
 def test_pay_claim(monkeypatch):
     monkeypatch.setattr(main, "backend", lambda: TestClient(app))
+    main.start_claim.invoke({"claim_id": "CLM-1003"})
     main.record_decision.invoke(
         {
             "claim_id": "CLM-1003",

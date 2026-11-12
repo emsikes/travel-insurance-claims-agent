@@ -1,6 +1,7 @@
 """The UnderCover backend."""
 
 import json
+import sqlite3
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -8,10 +9,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from backend.database import get_db, init_db, row_to_dict
-
-
-class StatusUpdate(BaseModel):
-    status: str
 
 
 class Decision(BaseModel):
@@ -180,58 +177,108 @@ def get_policy_wording() -> dict[str, str]:
     return {"content": row["content"]}
 
 
-@app.post("/api/claims/{claim_id}/status", operation_id="update_claim_status")
-def update_claim_status(claim_id: str, update: StatusUpdate) -> dict[str, str]:
-    """Update a claim's status."""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE claims SET status = ? WHERE claim_id = ?",
-        (update.status, claim_id),
-    )
-    if cursor.rowcount == 0:
+MAX_ATTEMPTS = 2
+
+
+class Failure(BaseModel):
+    error: str
+
+
+def fetch_claim(conn: sqlite3.Connection, claim_id: str) -> dict[str, Any]:
+    """Return a claim's row, or raise 404."""
+    row = conn.execute(
+        "SELECT * FROM claims WHERE claim_id = ?", (claim_id,)
+    ).fetchone()
+    if not row:
         conn.close()
         raise HTTPException(status_code=404, detail="Claim not found")
+    return row_to_dict(row)
+
+
+def approval_limit(conn: sqlite3.Connection) -> float:
+    """Return the payout approval limit from the company settings."""
+    row = conn.execute("SELECT data FROM company_settings").fetchone()
+    return json.loads(row["data"])["payout_approval_limit"]
+
+
+def record_failure(conn: sqlite3.Connection, claim: dict[str, Any]) -> dict[str, Any]:
+    """Count a failed attempt: requeue the claim, or leave it for a handler."""
+    if claim["decision"] is not None:
+        return {
+            "claim_id": claim["claim_id"],
+            "status": claim["status"],
+            "attempts": claim["attempts"],
+        }
+    attempts = claim["attempts"] + 1
+    status = "needs_handler" if attempts >= MAX_ATTEMPTS else "waiting"
+    conn.execute(
+        "UPDATE claims SET status = ?, attempts = ? WHERE claim_id = ?",
+        (status, attempts, claim["claim_id"]),
+    )
+    return {"claim_id": claim["claim_id"], "status": status, "attempts": attempts}
+
+
+@app.post("/api/claims/recover", operation_id="recover_claims")
+def recover_claims() -> dict[str, list[str]]:
+    """Count every undecided claim left in progress as a failed attempt."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM claims WHERE status = 'in_progress' AND decision IS NULL"
+    ).fetchall()
+    for row in rows:
+        record_failure(conn, row_to_dict(row))
     conn.commit()
     conn.close()
-    return {"claim_id": claim_id, "status": update.status}
+    return {"recovered": [row["claim_id"] for row in rows]}
+
+
+@app.post("/api/claims/{claim_id}/start", operation_id="start_claim")
+def start_claim(claim_id: str) -> dict[str, str]:
+    """Start work on a waiting claim."""
+    conn = get_db()
+    claim = fetch_claim(conn, claim_id)
+    cursor = conn.execute(
+        "UPDATE claims SET status = 'in_progress' "
+        "WHERE claim_id = ? AND status = 'waiting'",
+        (claim_id,),
+    )
+    conn.commit()
+    conn.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(
+            status_code=409, detail=f"Claim is {claim['status']}, not waiting"
+        )
+    return {"claim_id": claim_id, "status": "in_progress"}
+
+
+@app.post("/api/claims/{claim_id}/fail", operation_id="fail_claim")
+def fail_claim(claim_id: str, failure: Failure) -> dict[str, Any]:
+    """Record a failed attempt on a claim."""
+    conn = get_db()
+    result = record_failure(conn, fetch_claim(conn, claim_id))
+    conn.commit()
+    conn.close()
+    return result
 
 
 @app.post("/api/claims/{claim_id}/decide", operation_id="decide_claim")
 def decide_claim(claim_id: str, decision: Decision) -> dict[str, Any]:
-    """Record a decision on a claim."""
+    """Record a decision on a claim in progress."""
     conn = get_db()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM claims WHERE claim_id = ?", (claim_id,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Claim not found")
-
-    cursor.execute("SELECT data FROM company_settings")
-    settings_row = cursor.fetchone()
-    if not settings_row:
-        conn.close()
-        raise HTTPException(status_code=500, detail="Company settings not found")
-
-    settings = json.loads(settings_row["data"])
-    approval_limit = settings["payout_approval_limit"]
-
-    if decision.decision == "approve" and decision.payout > approval_limit:
-        status = "waiting_for_signoff"
-    elif decision.decision in ("approve", "decline", "refer"):
-        status = "decided"
-    else:
+    claim = fetch_claim(conn, claim_id)
+    if decision.decision not in ("approve", "decline", "refer"):
         conn.close()
         raise HTTPException(status_code=400, detail="Invalid decision")
 
-    cursor.execute(
+    over_limit = decision.decision == "approve" and decision.payout > approval_limit(
+        conn
+    )
+    status = "waiting_for_signoff" if over_limit else "decided"
+    cursor = conn.execute(
         """
         UPDATE claims
-        SET decision = ?, payout = ?, explanation = ?,
-            policy_reference = ?, status = ?
-        WHERE claim_id = ?
+        SET decision = ?, payout = ?, explanation = ?, policy_reference = ?, status = ?
+        WHERE claim_id = ? AND status = 'in_progress' AND decision IS NULL
         """,
         (
             decision.decision,
@@ -244,6 +291,12 @@ def decide_claim(claim_id: str, decision: Decision) -> dict[str, Any]:
     )
     conn.commit()
     conn.close()
+    if cursor.rowcount == 0:
+        if claim["decision"] is not None:
+            raise HTTPException(status_code=409, detail="Claim is already decided")
+        raise HTTPException(
+            status_code=409, detail=f"Claim is {claim['status']}, not in progress"
+        )
 
     return {
         "claim_id": claim_id,
@@ -255,49 +308,27 @@ def decide_claim(claim_id: str, decision: Decision) -> dict[str, Any]:
 
 @app.post("/api/claims/{claim_id}/pay", operation_id="pay_claim")
 def pay_claim(claim_id: str, payment: Payment) -> dict[str, Any]:
-    """Pay a claim."""
+    """Pay an approved claim."""
     conn = get_db()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM claims WHERE claim_id = ?", (claim_id,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Claim not found")
-
-    claim = row_to_dict(row)
-
-    if claim["status"] not in ("decided", "waiting_for_signoff"):
+    claim = fetch_claim(conn, claim_id)
+    if claim["decision"] != "approve":
         conn.close()
         raise HTTPException(
-            status_code=400, detail="Claim must be decided before payment"
+            status_code=400, detail="Claim must be approved before payment"
         )
-
-    cursor.execute("SELECT data FROM company_settings")
-    settings_row = cursor.fetchone()
-    if not settings_row:
-        conn.close()
-        raise HTTPException(status_code=500, detail="Company settings not found")
-
-    settings = json.loads(settings_row["data"])
-    approval_limit = settings["payout_approval_limit"]
-
-    if payment.amount > approval_limit and claim["status"] == "waiting_for_signoff":
+    if payment.amount > approval_limit(conn):
         conn.close()
         raise HTTPException(
             status_code=403, detail="Payment over limit requires sign-off"
         )
 
-    if payment.amount > approval_limit and claim["status"] != "waiting_for_signoff":
-        conn.close()
-        raise HTTPException(
-            status_code=403, detail="Payment over limit requires sign-off"
-        )
-
-    cursor.execute(
-        "UPDATE claims SET status = 'decided' WHERE claim_id = ?", (claim_id,)
+    cursor = conn.execute(
+        "UPDATE claims SET paid_amount = ? WHERE claim_id = ? AND paid_amount IS NULL",
+        (payment.amount, claim_id),
     )
     conn.commit()
     conn.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=409, detail="Claim is already paid")
 
     return {"claim_id": claim_id, "amount": payment.amount, "status": "paid"}
