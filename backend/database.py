@@ -1,12 +1,18 @@
 """Database initialization and access."""
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 DB_PATH = Path("undercover.db")
 DATA_DIR = Path("data")
+DOCUMENTS = {
+    "policy_wording": "policy_wording.md",
+    "claims_manual": "claims_manual.md",
+}
+SECTION_HEADING = re.compile(r"^## (\d+)\. (.+)$", re.MULTILINE)
 
 
 def get_db() -> sqlite3.Connection:
@@ -100,9 +106,51 @@ def init_db() -> None:
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            document TEXT NOT NULL,
+            number INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            PRIMARY KEY (document, number)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS claim_steps (
+            step_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            claim_id TEXT NOT NULL,
+            attempt INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS runs (
+            run_id TEXT PRIMARY KEY,
+            cap INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            todos TEXT NOT NULL,
+            summary TEXT,
+            started_at TEXT NOT NULL
+        )
+    """)
+
     conn.commit()
     load_data(conn)
     conn.close()
+
+
+def split_sections(text: str) -> list[tuple[int, str, str]]:
+    """Split a document at its numbered ## headings into (number, title, content)."""
+    headings = list(SECTION_HEADING.finditer(text))
+    ends = [h.start() for h in headings[1:]] + [len(text)]
+    return [
+        (int(h.group(1)), h.group(2).strip(), text[h.start() : end].strip())
+        for h, end in zip(headings, ends, strict=True)
+    ]
 
 
 def load_data(conn: sqlite3.Connection) -> None:
@@ -222,6 +270,15 @@ def load_data(conn: sqlite3.Connection) -> None:
             ),
         )
 
+    for document, file_name in DOCUMENTS.items():
+        text = (DATA_DIR / file_name).read_text(encoding="utf-8")
+        for number, title, content in split_sections(text):
+            cursor.execute(
+                "INSERT INTO documents (document, number, title, content) "
+                "VALUES (?, ?, ?, ?)",
+                (document, number, title, content),
+            )
+
     conn.commit()
 
 
@@ -236,6 +293,9 @@ def seed() -> dict[str, int]:
         DROP TABLE IF EXISTS company_settings;
         DROP TABLE IF EXISTS policy_wording;
         DROP TABLE IF EXISTS handlers;
+        DROP TABLE IF EXISTS documents;
+        DROP TABLE IF EXISTS claim_steps;
+        DROP TABLE IF EXISTS runs;
     """)
     conn.close()
     init_db()

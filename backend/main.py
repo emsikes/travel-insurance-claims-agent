@@ -3,7 +3,10 @@
 import json
 import sqlite3
 from contextlib import asynccontextmanager
-from typing import Any
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Literal
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -332,3 +335,160 @@ def pay_claim(claim_id: str, payment: Payment) -> dict[str, Any]:
         raise HTTPException(status_code=409, detail="Claim is already paid")
 
     return {"claim_id": claim_id, "amount": payment.amount, "status": "paid"}
+
+
+INSTRUCTIONS_DIR = Path(__file__).parent / "instructions"
+
+
+class Step(BaseModel):
+    attempt: int
+    kind: Literal["tool_call", "section_read", "result", "error"]
+    text: str
+
+
+class RunStart(BaseModel):
+    cap: int
+
+
+class Todo(BaseModel):
+    claim_id: str
+    content: str
+    status: Literal["to_do", "in_progress", "done", "left_for_handler"]
+
+
+class Summary(BaseModel):
+    summary: str
+
+
+def now() -> str:
+    """Return the current time in UTC as ISO 8601."""
+    return datetime.now(UTC).isoformat()
+
+
+@app.get("/api/documents/{document}/sections", operation_id="list_sections")
+def list_sections(document: str) -> list[dict[str, Any]]:
+    """List the numbered sections of the policy wording or the claims manual."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT number, title FROM documents WHERE document = ? ORDER BY number",
+        (document,),
+    ).fetchall()
+    conn.close()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return [row_to_dict(row) for row in rows]
+
+
+@app.get("/api/documents/{document}/sections/{number}", operation_id="read_section")
+def read_section(document: str, number: int) -> dict[str, Any]:
+    """Read one section of the policy wording or the claims manual."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT number, title, content FROM documents "
+        "WHERE document = ? AND number = ?",
+        (document, number),
+    ).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return row_to_dict(row)
+
+
+@app.post("/api/claims/{claim_id}/steps", operation_id="record_step")
+def record_step(claim_id: str, step: Step) -> dict[str, Any]:
+    """Record a step the agent took on a claim."""
+    conn = get_db()
+    fetch_claim(conn, claim_id)
+    created_at = now()
+    conn.execute(
+        "INSERT INTO claim_steps (claim_id, attempt, kind, text, created_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (claim_id, step.attempt, step.kind, step.text, created_at),
+    )
+    conn.commit()
+    conn.close()
+    return {"claim_id": claim_id, **step.model_dump(), "created_at": created_at}
+
+
+@app.get("/api/claims/{claim_id}/steps", operation_id="get_claim_steps")
+def get_claim_steps(claim_id: str) -> list[dict[str, Any]]:
+    """Get the steps the agent took on a claim, in order."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT attempt, kind, text, created_at FROM claim_steps "
+        "WHERE claim_id = ? ORDER BY step_id",
+        (claim_id,),
+    ).fetchall()
+    conn.close()
+    return [row_to_dict(row) for row in rows]
+
+
+def run_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    """Convert a runs row to a dictionary with its todos decoded."""
+    run = row_to_dict(row)
+    run["todos"] = json.loads(run["todos"])
+    return run
+
+
+@app.post("/api/runs", operation_id="start_run")
+def start_run(start: RunStart) -> dict[str, Any]:
+    """Start a run of the agent over the queue, capped at a number of claims."""
+    run_id = f"RUN-{uuid4().hex[:8]}"
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO runs (run_id, cap, status, todos, started_at) "
+        "VALUES (?, ?, 'running', '[]', ?)",
+        (run_id, start.cap, now()),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+    conn.close()
+    return run_to_dict(row)
+
+
+def update_run(run_id: str, column: str, value: str) -> dict[str, Any]:
+    """Set one column of a run, or raise 404."""
+    conn = get_db()
+    cursor = conn.execute(
+        f"UPDATE runs SET {column} = ? WHERE run_id = ?",  # noqa: S608
+        (value, run_id),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+    conn.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return run_to_dict(row)
+
+
+@app.put("/api/runs/{run_id}/todos", operation_id="update_todos")
+def update_todos(run_id: str, todos: list[Todo]) -> dict[str, Any]:
+    """Replace a run's to-do list."""
+    return update_run(
+        run_id, "todos", json.dumps([todo.model_dump() for todo in todos])
+    )
+
+
+@app.post("/api/runs/{run_id}/finish", operation_id="finish_run")
+def finish_run(run_id: str, summary: Summary) -> dict[str, Any]:
+    """Finish a run with its summary for the handlers."""
+    update_run(run_id, "summary", summary.summary)
+    return update_run(run_id, "status", "finished")
+
+
+@app.get("/api/runs/latest", operation_id="get_latest_run")
+def get_latest_run() -> dict[str, Any] | None:
+    """Get the most recent run, or null if there has been none."""
+    conn = get_db()
+    row = conn.execute("SELECT * FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()
+    conn.close()
+    return run_to_dict(row) if row else None
+
+
+@app.get("/api/instructions", operation_id="get_instructions")
+def get_instructions() -> dict[str, str]:
+    """Get the agent's instructions for running the queue and working a claim."""
+    return {
+        name: (INSTRUCTIONS_DIR / f"{name}.md").read_text(encoding="utf-8")
+        for name in ("queue", "claim")
+    }

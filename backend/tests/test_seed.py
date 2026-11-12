@@ -1,6 +1,7 @@
 import contextlib
 import json
 import time
+from pathlib import Path
 
 from backend import seed as seed_cli
 from backend.database import DATA_DIR, DB_PATH, get_db, init_db, seed
@@ -68,3 +69,18 @@ def test_main_prints_counts(capsys):
     out = capsys.readouterr().out
     assert f"Seeded {count_in('claims.json')} claims" in out
     assert DB_PATH.name in out
+
+
+def test_seed_never_reads_evals(monkeypatch):
+    opened = []
+    real_open = Path.open
+
+    def recording_open(self, *args, **kwargs):
+        opened.append(self.as_posix())
+        return real_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", recording_open)
+    seed()
+
+    assert any(path.endswith("claims_manual.md") for path in opened)
+    assert not [path for path in opened if "evals" in path]
