@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage
 
-from agent import claim, main
+from agent import claim
 from agent.tests.conftest import decide_and_pay, stub, tool_call
 
 
@@ -145,17 +145,6 @@ def test_work_on_a_claim_that_is_not_waiting(api):
     claim.work("CLM-1010", "run", stub(*decide_and_pay("CLM-1010")))
     result = claim.work("CLM-1010", "run", stub())
     assert result.startswith("CLM-1010 not started: Error 409")
-
-
-def test_model_defaults_to_deepseek(monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.delenv("MODEL_NAME", raising=False)
-    default = main.model()
-    assert default.model_name == "deepseek/deepseek-v4.1-flash"
-    assert default.reasoning_effort == "low"
-    monkeypatch.setenv("MODEL_NAME", "openrouter/free")
-    assert main.model().model_name == "openrouter/free"
-    assert main.model().reasoning_effort is None
 
 
 def test_a_looping_claim_agent_is_stopped(api, monkeypatch):

@@ -1,19 +1,20 @@
 import { defineConfig } from "@playwright/test";
+import { BACKEND_URL, DASHBOARD_URL, port } from "./urls.config";
 
 export default defineConfig({
   testDir: "e2e",
   outputDir: "e2e/test-results",
   reporter: "list",
-  use: { baseURL: "http://localhost:5173" },
+  use: { baseURL: DASHBOARD_URL },
   webServer: [
     {
-      command: "uv run -m uvicorn backend.main:app --port 8000",
-      url: "http://127.0.0.1:8000/api/health",
+      command: `uv run -m uvicorn backend.main:app --port ${String(port(BACKEND_URL))}`,
+      url: `${BACKEND_URL}/api/health`,
       reuseExistingServer: true,
     },
     {
-      command: "npx vite dashboard --port 5173 --strictPort",
-      url: "http://localhost:5173",
+      command: `npx vite dashboard --port ${String(port(DASHBOARD_URL))} --strictPort`,
+      url: DASHBOARD_URL,
       reuseExistingServer: true,
     },
   ],

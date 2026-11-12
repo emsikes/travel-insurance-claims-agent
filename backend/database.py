@@ -6,8 +6,9 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path("undercover.db")
-DATA_DIR = Path("data")
+ROOT = Path(__file__).resolve().parents[1]
+DB_PATH = ROOT / "undercover.db"
+DATA_DIR = ROOT / "data"
 DOCUMENTS = {
     "policy_wording": "policy_wording.md",
     "claims_manual": "claims_manual.md",

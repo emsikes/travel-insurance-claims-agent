@@ -1,16 +1,14 @@
 import { expect, test } from "@playwright/test";
 
-const api = "http://127.0.0.1:8000";
-
 test.describe("Agent harness", () => {
   test("shows the current run's to-do list on the queue page", async ({
     page,
     request,
   }) => {
     const run = (await (
-      await request.post(`${api}/api/runs`, { data: { cap: 3 } })
+      await request.post("/api/runs", { data: { cap: 3 } })
     ).json()) as { run_id: string };
-    await request.put(`${api}/api/runs/${run.run_id}/todos`, {
+    await request.put(`/api/runs/${run.run_id}/todos`, {
       data: [
         { claim_id: "CLM-1001", content: "CLM-1001: e2e one", status: "done" },
         {
@@ -33,7 +31,7 @@ test.describe("Agent harness", () => {
     await expect(panel.getByText("CLM-1002: e2e two")).toBeVisible();
     await expect(panel.getByText("In progress", { exact: true })).toBeVisible();
 
-    await request.put(`${api}/api/runs/${run.run_id}/todos`, {
+    await request.put(`/api/runs/${run.run_id}/todos`, {
       data: [
         { claim_id: "CLM-1001", content: "CLM-1001: e2e one", status: "done" },
         { claim_id: "CLM-1002", content: "CLM-1002: e2e two", status: "done" },
@@ -44,7 +42,7 @@ test.describe("Agent harness", () => {
         },
       ],
     });
-    await request.post(`${api}/api/runs/${run.run_id}/finish`, {
+    await request.post(`/api/runs/${run.run_id}/finish`, {
       data: { summary: "Three claims worked in the e2e run." },
     });
     await expect(panel.getByText("3 of 3 done")).toBeVisible();
@@ -58,10 +56,10 @@ test.describe("Agent harness", () => {
     request,
   }) => {
     const text = `Claims manual 9. Repeat claims (e2e ${String(Date.now())})`;
-    await request.post(`${api}/api/claims/CLM-1025/steps`, {
+    await request.post("/api/claims/CLM-1025/steps", {
       data: { attempt: 1, kind: "section_read", text },
     });
-    await request.post(`${api}/api/claims/CLM-1025/steps`, {
+    await request.post("/api/claims/CLM-1025/steps", {
       data: { attempt: 1, kind: "tool_call", text: "get_claim(e2e): ok" },
     });
 

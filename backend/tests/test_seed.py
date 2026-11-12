@@ -84,3 +84,14 @@ def test_seed_never_reads_evals(monkeypatch):
 
     assert any(path.endswith("claims_manual.md") for path in opened)
     assert not [path for path in opened if "evals" in path]
+
+
+def test_init_db_works_from_any_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    DB_PATH.unlink()
+
+    init_db()
+
+    assert DB_PATH.exists()
+    assert not (tmp_path / "undercover.db").exists()
+    assert claim_status("CLM-1001") == "waiting"

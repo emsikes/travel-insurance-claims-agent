@@ -1,9 +1,10 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
+import { BACKEND_URL, DASHBOARD_URL, port } from "../urls.config";
 
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: { "/api": "http://127.0.0.1:8000" } },
+  server: { port: port(DASHBOARD_URL), proxy: { "/api": BACKEND_URL } },
   test: {
     environment: "jsdom",
     coverage: {
