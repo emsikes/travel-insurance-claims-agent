@@ -78,12 +78,24 @@ export const TODO_CLASSES: Record<TodoStatus, ClaimStatus> = {
   left_for_handler: "needs_handler",
 };
 
+export interface Settings {
+  payout_approval_limit: number;
+}
+
 export const POLL_MS = 2000;
 
-export async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(path);
   return (await response.json()) as T;
 }
+
+export const fetchClaims = () => getJson<Claim[]>("/api/claims");
+export const fetchLatestRun = () => getJson<Run | null>("/api/runs/latest");
+export const fetchSteps = (claimId: string) =>
+  getJson<Step[]>(`/api/claims/${claimId}/steps`);
+export const fetchInstructions = () =>
+  getJson<Instructions>("/api/instructions");
+export const fetchSettings = () => getJson<Settings>("/api/company-settings");
 
 export function money(amount: number): string {
   return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

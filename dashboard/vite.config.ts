@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
-import { BACKEND_URL, DASHBOARD_URL, port } from "../urls.config";
+import { BACKEND_URL, DASHBOARD_URL, port } from "../urls.config.ts";
 
 export default defineConfig({
   plugins: [react()],

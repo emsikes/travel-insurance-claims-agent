@@ -105,6 +105,7 @@ function mockApi(
     [/\/api\/runs\/latest$/, routes.run ?? null],
     [/\/api\/claims\/[^/]+\/steps$/, routes.steps ?? []],
     [/\/api\/instructions$/, instructions],
+    [/\/api\/company-settings$/, { payout_approval_limit: 1000 }],
   ];
   const fetchMock = vi.fn((url: string) => {
     const match = responses.find(([pattern]) => pattern.test(url));
@@ -198,14 +199,48 @@ it("shows the summary of a finished run", async () => {
   expect(screen.getByText("Four claims worked.")).toBeDefined();
 });
 
-it("polls for updates to the run", async () => {
+function callsTo(fetchMock: ReturnType<typeof mockApi>, pattern: RegExp) {
+  return fetchMock.mock.calls.filter(([url]) => pattern.test(url)).length;
+}
+
+const CLAIMS = /\/api\/claims$/;
+const RUNS = /\/api\/runs\/latest$/;
+const STEPS = /\/steps$/;
+
+it("polls the claims every 2 seconds while a run is in progress", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   const fetchMock = mockApi({ run });
   render(<App />);
-  await screen.findByText("CLM-1001");
-  const calls = fetchMock.mock.calls.length;
-  await vi.advanceTimersByTimeAsync(2000);
-  expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
+  await screen.findByLabelText("Current run");
+  const before = callsTo(fetchMock, CLAIMS);
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(callsTo(fetchMock, CLAIMS)).toBe(before + 2);
+});
+
+it("stops polling the claims when no run is in progress", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  const fetchMock = mockApi({ run: { ...run, status: "finished" } });
+  render(<App />);
+  await screen.findByText("Last agent run");
+  const claims = callsTo(fetchMock, CLAIMS);
+  const runs = callsTo(fetchMock, RUNS);
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(callsTo(fetchMock, CLAIMS)).toBe(claims);
+  expect(callsTo(fetchMock, RUNS)).toBeGreaterThan(runs);
+});
+
+it("polls nothing on the instructions page", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  const fetchMock = mockApi({ run });
+  render(<App />);
+  await screen.findByLabelText("Current run");
+  fireEvent.click(screen.getByText("Agent Instructions"));
+  await screen.findByText("Running the Queue");
+  const calls = [CLAIMS, RUNS, STEPS].map((p) => callsTo(fetchMock, p));
+  await vi.advanceTimersByTimeAsync(10000);
+  expect([CLAIMS, RUNS, STEPS].map((p) => callsTo(fetchMock, p))).toEqual(
+    calls,
+  );
 });
 
 it("shows a claim's details, steps and sections read", async () => {
@@ -266,7 +301,11 @@ it("shows a decision waiting for sign-off", async () => {
   fireEvent.click(await screen.findByText("CLM-1001"));
   expect(await screen.findByText("Decision: APPROVE")).toBeDefined();
   expect(screen.getByText("Payout: $1,500.00")).toBeDefined();
-  expect(screen.getByText(/payment waits for sign-off/)).toBeDefined();
+  expect(
+    await screen.findByText(
+      "Over the $1,000.00 approval limit: payment waits for sign-off.",
+    ),
+  ).toBeDefined();
   expect(screen.getByText("Covered delay.")).toBeDefined();
   expect(
     screen.getByText("Policy Reference: Policy wording 3. Trip Delay"),

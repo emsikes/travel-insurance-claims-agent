@@ -507,3 +507,30 @@ code,
 .summary-card[class*="status-"] .summary-value {
   color: inherit;
 }
+
+.claim-meta {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.detail-item.spaced {
+  margin-bottom: 1rem;
+}
+
+.items-total {
+  font-weight: 600;
+}
+
+.payout {
+  font-size: 1.2rem;
+  margin: 0.5rem 0;
+}
+
+.explanation {
+  margin-top: 1rem;
+}
+
+.policy-reference {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}

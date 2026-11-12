@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { getJson, type Instructions } from "./api";
+import { fetchInstructions, type Instructions } from "./api";
 
 export function InstructionsView() {
   const [instructions, setInstructions] = useState<Instructions | null>(null);
 
   useEffect(() => {
-    void getJson<Instructions>("/api/instructions").then(setInstructions);
+    void fetchInstructions().then(setInstructions);
   }, []);
 
   if (!instructions) {

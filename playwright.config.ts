@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { BACKEND_URL, DASHBOARD_URL, port } from "./urls.config";
+import { BACKEND_URL, DASHBOARD_URL, port } from "./urls.config.ts";
 
 export default defineConfig({
   testDir: "e2e",

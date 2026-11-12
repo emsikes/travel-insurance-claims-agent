@@ -2,8 +2,7 @@
 
 import argparse
 
-from agent.claim import work
-from agent.queue_agent import run_queue
+from agent.queue_agent import run_one, run_queue
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -22,7 +21,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.claim_id:
-        print(work(args.claim_id, "cli").line)
+        print(run_one(args.claim_id))
     else:
         print(run_queue(args.cap))
 

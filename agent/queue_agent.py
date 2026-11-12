@@ -17,6 +17,11 @@ from agent import backend_api, claim, config
 
 MAX_REMINDERS = 3
 RECURSION_LIMIT = 500
+TODO_STATUS = {
+    "decided": "done",
+    "waiting_for_signoff": "done",
+    "needs_handler": "left_for_handler",
+}
 
 
 class Todo(BaseModel):
@@ -152,3 +157,21 @@ def run_queue(
             "POST", f"/api/runs/{run.run_id}/finish", {"summary": summary}
         )
     return summary
+
+
+def run_one(claim_id: str, llm: BaseChatModel | None = None) -> str:
+    """Work one named claim as a run capped at one claim, and return its result."""
+    summary = backend_api.request("GET", f"/api/claims/{claim_id}")["summary"]
+    run_id = backend_api.request("POST", "/api/runs", {"cap": 1})["run_id"]
+    todos_path = f"/api/runs/{run_id}/todos"
+    todo = {"claim_id": claim_id, "content": f"{claim_id}: {summary}"}
+    backend_api.request("PUT", todos_path, [{**todo, "status": "in_progress"}])
+    line = "The run stopped before it finished."
+    try:
+        line = claim.work(claim_id, run_id, llm).line
+    finally:
+        status = backend_api.request("GET", f"/api/claims/{claim_id}")["status"]
+        todo["status"] = TODO_STATUS.get(status, "to_do")
+        backend_api.request("PUT", todos_path, [todo])
+        backend_api.request("POST", f"/api/runs/{run_id}/finish", {"summary": line})
+    return line

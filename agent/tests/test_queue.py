@@ -242,3 +242,20 @@ def test_an_uncapped_run_is_capped_at_the_waiting_claims(api):
     queue_agent.run_queue(None, stub(*[AIMessage(content="Done.")] * 4))
     waiting = [c for c in api.get("/api/claims").json() if c["status"] == "waiting"]
     assert api.get("/api/runs/latest").json()["cap"] == len(waiting)
+
+
+def test_one_named_claim_is_a_run_capped_at_one(api):
+    line = queue_agent.run_one("CLM-1014", stub(*decide_and_pay("CLM-1014")))
+    assert line == "CLM-1014: approve, $200.00"
+    run = api.get("/api/runs/latest").json()
+    assert (run["cap"], run["status"], run["summary"]) == (1, "finished", line)
+    [todo] = run["todos"]
+    assert (todo["claim_id"], todo["status"]) == ("CLM-1014", "done")
+    assert todo["content"].startswith("CLM-1014: ")
+
+
+def test_one_named_claim_that_fails_stays_on_the_list(api):
+    line = queue_agent.run_one("CLM-1015", failing())
+    assert "back in the queue" in line
+    [todo] = api.get("/api/runs/latest").json()["todos"]
+    assert todo["status"] == "to_do"
