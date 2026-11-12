@@ -7,7 +7,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from pydantic import Field
 
-from agent import main
+from agent import backend_api
 from backend.database import DB_PATH, init_db
 from backend.main import app
 
@@ -68,5 +68,5 @@ def fresh_db():
 
 @pytest.fixture
 def api(monkeypatch):
-    monkeypatch.setattr(main, "backend", lambda: TestClient(app))
+    monkeypatch.setattr(backend_api, "client", lambda: TestClient(app))
     return TestClient(app)

@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.claim_id:
-        print(work(args.claim_id, "cli"))
+        print(work(args.claim_id, "cli").line)
     else:
         print(run_queue(args.cap))
 

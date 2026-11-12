@@ -1,13 +1,13 @@
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from agent import claim, queue_agent
+from agent import config, queue_agent
 from agent.tests.conftest import StubModel, decide_and_pay, stub, tool_call
 
 
 @pytest.fixture(autouse=True)
 def no_retries(monkeypatch):
-    monkeypatch.setattr(claim, "MAX_RETRIES", 0)
+    monkeypatch.setattr(config, "MAX_RETRIES", 0)
 
 
 def claim_models(scripts: dict[str, list[StubModel]]):

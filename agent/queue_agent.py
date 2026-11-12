@@ -1,4 +1,5 @@
-"""The queue agent: works the waiting claims in one run, one claim agent per claim."""
+"""The queue agent's harness: one run over the waiting claims, with a to-do list,
+a cap, one fresh claim agent per claim and a check for missed claims."""
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -6,18 +7,13 @@ from threading import Lock
 from typing import Any, Literal
 
 from langchain.agents import AgentState, create_agent
-from langchain.agents.middleware import (
-    AgentMiddleware,
-    ModelRetryMiddleware,
-    hook_config,
-)
+from langchain.agents.middleware import AgentMiddleware, hook_config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import BaseTool, tool
 from pydantic import BaseModel
 
-from agent import claim
-from agent.main import call, instructions, model
+from agent import backend_api, claim, config
 
 MAX_REMINDERS = 3
 RECURSION_LIMIT = 500
@@ -42,8 +38,8 @@ class QueueRun:
 
 
 def waiting_claims() -> list[dict[str, Any]]:
-    """Get the claims waiting in the queue."""
-    return [c for c in call("GET", "/api/claims") if c["status"] == "waiting"]
+    """Get the claims waiting in the queue, in brief."""
+    return backend_api.request("GET", "/api/claims/waiting")
 
 
 def queue_tools(run: QueueRun) -> list[BaseTool]:
@@ -52,21 +48,12 @@ def queue_tools(run: QueueRun) -> list[BaseTool]:
     @tool
     def list_waiting_claims() -> list[dict[str, Any]]:
         """List the waiting claims with their summary, type and amount claimed."""
-        return [
-            {
-                "claim_id": c["claim_id"],
-                "summary": c["summary"],
-                "claim_type": c["claim_type"],
-                "amount_claimed": c["amount_claimed"],
-                "attempts": c["attempts"],
-            }
-            for c in waiting_claims()
-        ]
+        return waiting_claims()
 
     @tool
     def write_todos(todos: list[Todo]) -> str:
         """Replace the run's to-do list, which the handlers see on the dashboard."""
-        result = call(
+        result = backend_api.for_model(
             "PUT",
             f"/api/runs/{run.run_id}/todos",
             [todo.model_dump() for todo in todos],
@@ -82,10 +69,10 @@ def queue_tools(run: QueueRun) -> list[BaseTool]:
             run.worked.add(claim_id)
         llm = run.claim_llm(claim_id) if run.claim_llm else None
         result = claim.work(claim_id, run.run_id, llm)
-        if " not started: " in result:
+        if not result.started:
             with run.lock:
                 run.worked.discard(claim_id)
-        return result
+        return result.line
 
     return [list_waiting_claims, write_todos, work_claim]
 
@@ -132,22 +119,16 @@ def run_queue(
     claim_llm: Callable[[str], BaseChatModel] | None = None,
 ) -> str:
     """Work the waiting claims, up to cap of them, and return the summary."""
-    call("POST", "/api/claims/recover")
+    backend_api.request("POST", "/api/claims/recover")
     if cap is None:
         cap = len(waiting_claims())
-    run = QueueRun(call("POST", "/api/runs", {"cap": cap})["run_id"], cap, claim_llm)
+    started = backend_api.request("POST", "/api/runs", {"cap": cap})
+    run = QueueRun(started["run_id"], cap, claim_llm)
     agent = create_agent(
-        llm or model(),
+        llm or config.model(),
         tools=queue_tools(run),
-        system_prompt=instructions("queue"),
-        middleware=(
-            MissedClaimCheck(run),
-            ModelRetryMiddleware(
-                max_retries=claim.MAX_RETRIES,
-                initial_delay=claim.RETRY_DELAY_SECONDS,
-                on_failure="error",
-            ),
-        ),
+        system_prompt=backend_api.instructions("queue"),
+        middleware=(MissedClaimCheck(run), config.retry()),
     )
     summary = "The run stopped before it finished."
     try:
@@ -167,5 +148,7 @@ def run_queue(
         )
         summary = result["messages"][-1].text
     finally:
-        call("POST", f"/api/runs/{run.run_id}/finish", {"summary": summary})
+        backend_api.request(
+            "POST", f"/api/runs/{run.run_id}/finish", {"summary": summary}
+        )
     return summary

@@ -1,6 +1,7 @@
 import pytest
 
 from agent import __main__ as cli
+from agent.claim import WorkResult
 
 
 def test_cli_works_the_queue(monkeypatch, capsys):
@@ -16,7 +17,9 @@ def test_cli_caps_the_run(monkeypatch, capsys):
 
 
 def test_cli_works_one_claim(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "work", lambda claim_id, prefix: f"{claim_id} {prefix}")
+    monkeypatch.setattr(
+        cli, "work", lambda claim_id, prefix: WorkResult(True, f"{claim_id} {prefix}")
+    )
     cli.main(["CLM-1009"])
     assert "CLM-1009 cli" in capsys.readouterr().out
 
